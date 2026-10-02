@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum AgentSegment {
+  NEW          // Licensed < 24 months
+  ESTABLISHED  // Licensed 24+ months
+}
+
+enum AgentStatus {
+  NEW_LEAD
+  CONTACTED
+  ENGROAGED
+  BOOKED_CALL
+  INTERVIEWED
+  CONTRACTED
+  NOT_A_FIT
+}
+
+enum OutreachChannel {
+  EMAIL
+  TEXT
+  PHONE
+  LINKEDIN
+}
+
+model Agent {
+  id                String   @id @default(cuid())
+  npn               String?  @unique // National Producer Number
+  firstName         String
+  lastName          String
+  email             String?
+  phone             String?
+  state             String   // Primary state
+  statesLicensed    String[] // Array of all licensed states
+  licenseNumber     String?
+  licenseStatus     String?  // active, lapsed, surrendered
+  linesOfAuthority  String[] // life, health, variable, etc.
+  originalIssueDate DateTime?
+  segment           AgentSegment?
+  status            AgentStatus  @default(NEW_LEAD)
+  source            String   @default("state_db") // where we found them
+  sourceState       String?  // which state's database
+  currentAgency     String?  // self-reported current agency
+  currentCarriers   String?  // self-reported current carriers
+  annualPremium     String?  // self-reported premium volume
+  yearsLicensed     String?  // self-reported experience
+  howDidYouHear     String?  // self-reported referral source
+  notes             String?
+  ghlContactId      String?  // GoHighLevel contact ID
+  ghlWorkflowId     String?  // GHL workflow enrolled in
+  lastContactedAt   DateTime?
+  nextFollowUp      DateTime?
+  contractedAt      DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  outreachLogs OutreachLog[]
+
+  @@index([state])
+  @@index([segment])
+  @@index([status])
+  @@index([npn])
+}
+
+model AgentApplication {
+  id                String   @id @default(cuid())
+  firstName         String
+  lastName          String
+  email             String
+  phone             String?
+  state             String
+  licensedStates    String[]
+  linesOfAuthority  String[]
+  yearsLicensed     String
+  currentAgency     String?
+  currentCarriers   String?
+  annualPremium     String?
+  whyLeft           String?
+  whatLookingFor    String?
+  howDidYouHear     String?
+  segment           AgentSegment?
+  status            AgentStatus @default(BOOKED_CALL)
+  ghlContactId      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
+}
+
+model OutreachLog {
+  id        String   @id @default(cuid())
+  agentId   String?
+  agent       Agent? @relation(fields: [agentId], references: [id])
+  applicationId String?
+  channel   OutreachChannel
+  subject   String?
+  body      String?
+  sentAt    DateTime @default(now())
+  ghlMessageId String?
+  openedAt  DateTime?
+  clickedAt DateTime?
+  repliedAt DateTime?
+}
